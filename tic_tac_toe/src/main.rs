@@ -55,17 +55,71 @@ fn validate_input(board: &[char; BOARD_SIZE*BOARD_SIZE], input: usize) -> bool {
 
 }
 
-fn computer_move(board: &mut [char; BOARD_SIZE*BOARD_SIZE], computer: &String) {
+fn minimax(board: &mut [char; BOARD_SIZE*BOARD_SIZE], computer: &String, is_maximizing:bool) -> (usize, i32) {
+
+    let mut best_move: usize = 0;
+    let mut best_score: i32 = if is_maximizing { i32::MIN } else { i32::MAX };
+    let mut score: i32;
+    let mut winner:char;
+
+    for i in 0..BOARD_SIZE*BOARD_SIZE {
+        if board[i] != 'X' && board[i] != 'O' {
+            let current_char = if is_maximizing { computer.chars().next().unwrap() } else { if computer == "X" { 'O' } else { 'X' } };
+            board[i] = current_char;
+            winner = check_winner(board);
+            if winner == computer.chars().next().unwrap() {
+                score = 1;
+            } else if winner != '_' && winner != 'D' {
+                score = -1;
+            } else if winner == 'D' {
+                score = 0;
+            } else {
+                score = minimax(board, computer, !is_maximizing).1;
+            }
+
+            board[i] = char::from_digit((i + 1) as u32, 10).unwrap();
+
+            if is_maximizing {
+                if score > best_score {
+                    best_score = score;
+                    best_move = i;
+                }
+            } else {
+                if score < best_score {
+                    best_score = score;
+                    best_move = i;
+                }
+            }
+
+
+
+        }
+    }
+
+    return (best_move, best_score);
+}
+
+fn computer_move(board: &mut [char; BOARD_SIZE*BOARD_SIZE], computer: &String, mode: &str) {
 
     let mut input: usize;
 
-    loop {
+    if mode == "easy" {
+        
+        loop {
+            input = rand::rng().random_range(0..BOARD_SIZE*BOARD_SIZE);
 
-        input = rand::rng().random_range(0..BOARD_SIZE*BOARD_SIZE);
-
-        if board[input] != 'X' && board[input] != 'O' {
-            break;
+            if board[input] != 'X' && board[input] != 'O' {
+                break;
+            }
         }
+
+    } else if mode == "hard" {
+        input = minimax(board, computer, true).0;
+
+    } else {
+
+        panic!("Invalid mode");
+        
     }
     
 
@@ -106,12 +160,34 @@ fn main() {
         board[i] = char::from_digit((i + 1) as u32, 10).unwrap();
     }
 
-    println!("\n{}", "Welcome to Tic Tac Toe!".bold());
-    println!("\n{}{}{}{}", "Choose whether you will be ".bold(), "O".green().bold(), " or ", "X".red().bold());
-
     let mut player: String = String::new();
     let computer: String;
     let mut winner:char;
+
+    let mode: &str;
+    let mut input_mode: String= String::new();
+
+    println!("\n{}", "Welcome to Tic Tac Toe!".bold());
+
+    println!("\n{}", "Choose hard mode for a challenge or easy mode for a quick game.".bold());
+    println!("\n{}{}{}{}", "Type ".bold(), "hard".red().bold(), " or ".bold(), "easy".green().bold());
+
+    io::stdin()
+            .read_line(&mut input_mode)
+            .expect("Failed to read input");
+
+
+    if input_mode.trim().to_lowercase() == "hard" {
+        mode = "hard";
+        println!("\n{}{} {}{}", "You have chosen ".bold(), "unbeatable".strikethrough().bold().black(), mode.red().bold(), " mode.".bold());
+    } else {
+        mode = "easy";
+        println!("\n{}{}{}", "You have chosen ".bold(), mode.green().bold(), " mode.".bold());
+    }
+
+
+
+    println!("\n{}{}{}{}", "Choose whether you will be ".bold(), "O".green().bold(), " or ", "X".red().bold());
 
     io::stdin()
             .read_line(&mut player)
@@ -130,7 +206,7 @@ fn main() {
         println!("\nYou are {}. Computer is {}.\n", player.red().bold(), computer.green().bold());
 
         // AS O STARTS FIRST, COMPUTER MAKES THE FIRST MOVE
-        computer_move(&mut board, &computer);
+        computer_move(&mut board, &computer, &mode);
     }
 
 
@@ -164,20 +240,25 @@ fn main() {
             break;
         }
 
-        computer_move(&mut board, &computer);
+        computer_move(&mut board, &computer, &mode);
         winner = check_winner(&board);
 
         if winner != 'D' && winner != '_' {
             print_board(&board);
-            println!("\n{}\n", "Computer wins!".red().bold());
+            if mode == "easy" {
+                println!("\n{}", "Computer wins!".red().bold());
+                println!("{}\n", "THE COMPUTER WAS CHOOSING RANDOM MOVES. HOW THE HELL DID YOU LOSE?".black().bold());
+            } else {
+                println!("\n{}", "Computer wins!".red().bold());
+                println!("{}{}{}\n", "Maybe it ".black().bold(), "was ".bold().black().italic(), "unbeatable.".black().bold());
+            }
             break;
+            
         } else if winner == 'D' {
             print_board(&board);
             println!("\n{}\n", "It's a draw!".bold());
             break;
         }
-
-
 
     }
 }
